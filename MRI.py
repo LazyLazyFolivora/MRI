@@ -1,10 +1,15 @@
 import random
 import os
+import time
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
+from matplotlib import pyplot as plt
+
 from ASoftMax import AngleLinear
 from Config import Config
 
@@ -164,6 +169,26 @@ class Bottleneck(nn.Module):
             x = self.downsample(x)
         return F.relu(out + x, inplace=True)
 
+def draw_features(width,height,x,savename):
+    tic=time.time()
+    fig = plt.figure(figsize=(16, 16))
+    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.05, hspace=0.05)
+    for i in range(width*height):
+        plt.subplot(height,width, i + 1)
+        plt.axis('off')
+        # plt.tight_layout()
+        img = x[0, i, :, :]
+        pmin = np.min(img)
+        pmax = np.max(img)
+        img = (img - pmin) / (pmax - pmin + 0.000001)
+        plt.imshow(img)
+        print("{}/{}".format(i,width*height))
+    fig.savefig(savename, dpi=100)
+    fig.clf()
+    plt.close()
+    print("time:{}".format(time.time()-tic))
+
+
 
 class ResNet(nn.Module):
     def __init__(self):
@@ -191,8 +216,14 @@ class ResNet(nn.Module):
         out1 = F.max_pool2d(out1, kernel_size=3, stride=2, padding=1)
         att = self.attention(out1)
         out2 = self.layer1(out1)
+        if config.draw_pic:
+            draw_features(4, 4, out2.cpu().numpy(), "{}/resnet_out2.png".format(config.savepath))
         out3 = self.layer2(out2)
+        if config.draw_pic:
+            draw_features(4, 4, out3.cpu().numpy(), "{}/resnet_out3.png".format(config.savepath))
         out4 = self.layer3(out3)
+        if config.draw_pic:
+            draw_features(4, 4, out4.cpu().numpy(), "{}/resnet_out4.png".format(config.savepath))
         out5 = self.layer4(out4)
         return out2, out3, out4, out5, att
 
@@ -304,7 +335,7 @@ class MRI(nn.Module):
         self.vlad = NetRVLAD(feature_size=128, max_samples=19, cluster_size=32, output_dim=100)
         self.seqAttention = SeqAttention()
 
-    def forward(self, x, targets):
+    def forward(self, x, targets=0):
         out2h, out3h, out4h, out5v, att = self.bkbone(x)
         out2h, out3h, out4h, out5v = self.squeeze2(out2h), self.squeeze3(out3h), self.squeeze4(out4h), self.squeeze5(
             out5v)
@@ -367,19 +398,28 @@ class MRI(nn.Module):
         secondfusion_12_up = F.interpolate(secondfusion_12, size=secondfusion_23.size()[2:], mode='bilinear')
         tout12 = torch.add(secondfusion_12_up, secondfusion_23)
         thirdfusion12 = self.tfusion_12(tout12)
+        if config.draw_pic:
+            draw_features(4, 4, thirdfusion12.cpu().numpy(), "{}/thirdfusion12.png".format(config.savepath))
         x1 = self.bilinear(thirdfusion12, x.size(0), 42, 42)
+        if config.draw_pic:
+            draw_features(4, 4, x1.cpu().numpy(), "{}/cap.png".format(config.savepath))
         x1 = self.Crop(x1)
         x1 = self.seqAttention(x1)
+
         x1 = torch.reshape(x1, (x1.size(0), 128, 931))
+
         x1 = self.avg2(x1)
+
         x1 = torch.flatten(x1, 1)
         x = self.avg(thirdfusion12)
         x = torch.flatten(x, 1)
-        x1 = torch.div(x1, 100)
+        x1 = torch.div(x1, config.alpha)
         x = torch.add(x, x1)
         x = self.angleLinear(x)
 
-        ce_loss = loss(x, targets)
+        ce_loss = None if targets == 0 else loss(x, targets)
+        if targets == 0:
+            return x
         return x, att, ce_loss
 
     def initialize(self):

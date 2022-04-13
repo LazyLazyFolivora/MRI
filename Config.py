@@ -1,7 +1,7 @@
 class Config(object):
     def __init__(self):
         # 数据集种类
-        self.num_classes = 120
+        self.num_classes = 102
 
         # 是否打印训练进度
         self.print_train_process = True
@@ -16,7 +16,7 @@ class Config(object):
         self.continue_train = True
 
         # 训练epoch
-        self.epoch = 100
+        self.epoch = 102
 
         # 训练batch_size
         self.batch_size = 8
@@ -31,13 +31,20 @@ class Config(object):
         self.resnet_path = "./resnet50-19c8e357.pth"
 
         # 默认model路径
-        self.model_path = "./models/models.pth"
+        self.model_path = "pre_models/flowers/models.pth"
 
         # 默认model_dict路径
-        self.model_dict_path = "./models/model_dict.pth"
+        self.model_dict_path = "pre_models/flowers/model_dict.pth"
 
         # 训练集路径
-        self.train_path = ".\home\data\Planes\\train"
+        self.train_path = ".\home\data\Flowers\\train"
 
         # 测试集路径
-        self.test_path = ".\home\data\Planes\\test"
+        self.test_path = ".\home\data\Flowers\\test"
+
+        self.alpha = 100
+
+        # 是否绘制图片
+        self.draw_pic = False
+
+        self.savepath = ".\ImageSave"

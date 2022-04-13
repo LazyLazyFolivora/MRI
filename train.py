@@ -96,13 +96,13 @@ model = MRI()
 # loss = CenterLoss()
 loss = nn.CrossEntropyLoss()
 # 优化器
-sgd = SGD(model.parameters(), lr=0.008, momentum=0.5)
+sgd = SGD(model.parameters(), lr=0.005, momentum=0.5)
 scheduler = CosineAnnealingLR(sgd, T_max=100)
 model = nn.DataParallel(model)
 cudnn.benchmark = True
 model = model.cuda(device)
 
-opt = torchcontrib.optim.SWA(sgd, swa_lr=0.05)
+opt = torchcontrib.optim.SWA(sgd, swa_lr=0.025)
 if config.continue_train:
     if os.path.exists(config.model_dict_path):
         model.load_state_dict(torch.load(config.model_dict_path, map_location=device), strict=False)
